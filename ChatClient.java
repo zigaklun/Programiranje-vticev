@@ -4,11 +4,20 @@ import java.time.*;
 
 public class ChatClient extends Thread {
 	protected int serverPort = 1234;
-	public String nameOfUser;
-	public String mode;
+	protected String nameOfUser;
+	protected String mode;
 
 	public static void main(String[] args) throws Exception {
 		new ChatClient();
+	}
+
+	public void nastaviMode(String line){
+		
+		mode = line;
+		
+		if(mode.length()>1){
+			mode = mode.substring(0,1);
+		}
 	}
 
 	public ChatClient() throws Exception {
@@ -25,17 +34,14 @@ public class ChatClient extends Thread {
 		try {
 			System.out.println("[system] connecting to chat server ...");
 			socket = new Socket("localhost", serverPort); // create socket connection
-			in = new DataInputStream(socket.getInputStream()); // create input stream for listening for incoming
-																// messages
+			in = new DataInputStream(socket.getInputStream()); // create input stream for listening for incoming messages
 			out = new DataOutputStream(socket.getOutputStream()); // create output stream for sending messages
 			System.out.println("[system] connected");
 
 			// sporocilo novega uporabnikia
 			this.sendMessage("User " + nameOfUser + " connected to the chat.", out);
 
-			ChatClientMessageReceiver message_receiver = new ChatClientMessageReceiver(in); // create a separate thread
-																							// for listening to messages
-																							// from the chat server
+			ChatClientMessageReceiver message_receiver = new ChatClientMessageReceiver(in); // create a separate thread for listening to messages from the chat server
 			message_receiver.start(); // run the new thread
 		} catch (Exception e) {
 			e.printStackTrace(System.err);
@@ -43,10 +49,11 @@ public class ChatClient extends Thread {
 		}
 
 		// read from STDIN and send messages to the chat server
-		System.out.println("Select message mode (P- private, O-public) ");
-		mode = std_in.readLine();
-		String reciever = null;
+		System.out.println("After each message select message mode (P- private, O-public) ");
+		String line = std_in.readLine();
+		nastaviMode(line);
 
+		String reciever = null;
 		if (mode.equals("P")) {
 			System.out.print("Ime uporabnika:");
 			reciever = std_in.readLine();
@@ -67,16 +74,14 @@ public class ChatClient extends Thread {
 			if (mode.equals("P")) {
 				int lengthOfReciever = reciever.length();
 
-				String segment = mode + dolzinaUporavnika + nameOfUser + d + " " + h + ":" + m + ":" + lengthOfReciever
-						+ ":" + reciever + userInput;
+				String segment = mode + dolzinaUporavnika + nameOfUser + d + " " + h + ":" + m + ":" + lengthOfReciever + ":" + reciever + userInput;
 				this.sendMessage(segment, out); // send the message to the chat server
 			} else {
 				String segment = mode + dolzinaUporavnika + nameOfUser + d + " " + h + ":" + m + ":" + userInput;
 				this.sendMessage(segment, out); // send the message to the chat server
 			}
-
-			System.out.println("Select message mode (P- private, O-public, N-name, E-error) ");
-			mode = std_in.readLine();
+			line = std_in.readLine();
+			nastaviMode(line);
 			if (mode.equals("P")) {
 				System.out.print("Ime uporabnika:");
 				reciever = std_in.readLine();
@@ -128,17 +133,13 @@ class ChatClientMessageReceiver extends Thread {
 					} else {
 
 						String dolzinaPos = message.substring(1, 2);
-						String datum = message.substring(2 + Integer.parseInt(dolzinaPos),
-								18 + Integer.parseInt(dolzinaPos));
+						String datum = message.substring(2 + Integer.parseInt(dolzinaPos), 18 + Integer.parseInt(dolzinaPos));
 						String posiljatelj = message.substring(2, 2 + Integer.parseInt(dolzinaPos));
 						String sporocilo = null;
-
+						
 						if (message.substring(0, 1).equals("P")) {
-							String dolzPrej = message.substring(19 + Integer.parseInt(dolzinaPos),
-									20 + Integer.parseInt(dolzinaPos));
-
-							sporocilo = message
-									.substring(21 + Integer.parseInt(dolzinaPos) + Integer.parseInt(dolzPrej));
+							String dolzPrej = message.substring(19 + Integer.parseInt(dolzinaPos), 20 + Integer.parseInt(dolzinaPos));						
+							sporocilo = message.substring(21 + Integer.parseInt(dolzinaPos) + Integer.parseInt(dolzPrej));
 						} else {
 							sporocilo = message.substring(18 + Integer.parseInt(dolzinaPos));
 						}
