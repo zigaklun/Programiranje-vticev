@@ -1,6 +1,8 @@
 import java.io.*;
 import java.net.*;
 import java.time.*;
+import javax.net.ssl.*;
+import java.security.*;
 
 public class ChatClient extends Thread {
 	protected int serverPort = 1234;
