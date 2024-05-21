@@ -23,7 +23,7 @@ public class ChatServer {
 			
 			// preberi datoteko z odjemalskimi certifikati
 			KeyStore clientKeyStore = KeyStore.getInstance("JKS"); // KeyStore za shranjevanje odjemalčevih javnih ključev (certifikatov)
-			clientKeyStore.load(new FileInputStream("clients.public"), "public".toCharArray());
+			clientKeyStore.load(new FileInputStream("client.public"), "public".toCharArray());
 
 			// preberi datoteko s svojim certifikatom in tajnim ključem
 			KeyStore serverKeyStore = KeyStore.getInstance("JKS"); // KeyStore za shranjevanje strežnikovega tajnega in javnega ključa
@@ -175,10 +175,6 @@ class ChatServerConnector extends Thread {
 		this.name = name;
 	}
 
-	public void setCName(String ime) {
-		this.name = ime;
-	}
-
 	public void run() {
 		System.out.println("[system] connected with " + this.socket.getInetAddress().getHostName() + ":"+ this.socket.getPort() + ":" + this.name);
 
@@ -202,22 +198,10 @@ class ChatServerConnector extends Thread {
 				this.server.removeClient(this.socket);
 				return;
 			}
-			String prva_crka = msg_received.substring(0, 1);
+			char prva_crka = msg_received.charAt(0);
 			try {
-				if (prva_crka.equals("U")) {
-					int indeks = 5;
-					for (int i = 5; i < msg_received.length() - 4; i++) {
-						if (msg_received.charAt(i) == ' ')
-							break;
-						else {
-							indeks++;
-						}
-					}
-
-					setCName(msg_received.substring(5, indeks).toUpperCase());
-					synchronized(this){
-						this.server.clients.putIfAbsent(this.socket,this.name );
-					}
+				if (prva_crka == 'U') {
+					
 					System.out.println("[ " + this.name + "- " + this.socket.getPort() + " ]: " + msg_received);
 
 				}
@@ -229,9 +213,9 @@ class ChatServerConnector extends Thread {
 			try{
 				if (msg_received.length() == 0) // invalid message
 					continue;
-				if(prva_crka.equals("O")){
+				if(prva_crka == 'O'){
 					System.out.println("[ " + this.name + "- " + this.socket.getPort() + " ]: "+ msg_received.substring(18+this.name.length()));
-				} else if(prva_crka.equals("P")){
+				} else if(prva_crka == 'P'){
 					String dolPos = msg_received.substring(19+this.name.length(),20 + this.name.length());
 					System.out.println("[ " + this.name + "- " + this.socket.getPort() + " ]: " + msg_received.substring(21 + this.name.length() + Integer.parseInt(dolPos) ));
 				}
@@ -243,7 +227,7 @@ class ChatServerConnector extends Thread {
 			String msg_send = msg_received.toUpperCase(); // TODO
 
 			try {
-				if(prva_crka.equals("P")){
+				if(prva_crka == 'P'){
 					this.server.sendToOneClient(msg_send);
 				}
 				else 

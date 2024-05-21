@@ -40,7 +40,7 @@ public class ChatClient extends Thread {
 
 			// preberi datoteko s svojim certifikatom in tajnim ključem
 			KeyStore clientKeyStore = KeyStore.getInstance("JKS");
-			clientKeyStore.load(new FileInputStream("client.private"), passphrase.toCharArray());
+			clientKeyStore.load(new FileInputStream(nameOfUser+".private"), passphrase.toCharArray());
 
 			// vzpostavi SSL kontekst (komu zaupamo, kakšni so moji tajni ključi in certifikati)
 			TrustManagerFactory tmf = TrustManagerFactory.getInstance("SunX509");
@@ -62,7 +62,7 @@ public class ChatClient extends Thread {
 			System.out.println("[system] connected");
 
 			// sporocilo novega uporabnikia
-			this.sendMessage("User " + nameOfUser + " connected to the chat.", out);
+			this.sendMessage("User connected to the chat.", out);
 
 			ChatClientMessageReceiver message_receiver = new ChatClientMessageReceiver(in); // create a separate thread for listening to messages from the chat server
 			message_receiver.start(); // run the new thread
@@ -93,14 +93,14 @@ public class ChatClient extends Thread {
 				m = "0" + m;
 			}
 
-			int dolzinaUporavnika = this.nameOfUser.length();
+			
 			if (mode.equals("P")) {
 				int lengthOfReciever = reciever.length();
 
-				String segment = mode + dolzinaUporavnika + nameOfUser + d + " " + h + ":" + m + ":" + lengthOfReciever + ":" + reciever + userInput;
+				String segment = mode + d + " " + h + ":" + m + ":" + lengthOfReciever + ":" + reciever + userInput;
 				this.sendMessage(segment, out); // send the message to the chat server
 			} else {
-				String segment = mode + dolzinaUporavnika + nameOfUser + d + " " + h + ":" + m + ":" + userInput;
+				String segment = mode + d + " " + h + ":" + m + ":" + userInput;
 				this.sendMessage(segment, out); // send the message to the chat server
 			}
 			line = std_in.readLine();
@@ -147,7 +147,7 @@ class ChatClientMessageReceiver extends Thread {
 		try {
 			String message;
 			while ((message = this.in.readUTF()) != null) { // read new message
-
+				System.out.println(message);
 				try {
 					if (message.substring(0, 1).equals("U")) {
 
