@@ -38,5 +38,5 @@ Strežnik naj dovoli priklop le z uporabo TLS 1.2 in kombinacijo naslednjih algo
 - RSA
 - AES z 128 bitnim ključem in uporabo GCM
 - SHA256 za računanje HMAC
-- 
+  
 Takšen kandidat je le eden - https://ciphersuite.info/cs/TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256/
