@@ -23,19 +23,40 @@ public class ChatClient extends Thread {
 	}
 
 	public ChatClient() throws Exception {
-		Socket socket = null;
+		
 		DataInputStream in = null;
 		DataOutputStream out = null;
-
+		SSLSocket socket = null;
 		// vzamemo ime uporabnika
 		BufferedReader std_in = new BufferedReader(new InputStreamReader(System.in));
 		System.out.print("Prosim vpisite svoje ime: ");
 		nameOfUser = std_in.readLine();
 
-		// connect to the chat server
+		String passphrase = "rkpwd1";
 		try {
+			// preberi datoteko s strežnikovim certifikatom
+			KeyStore serverKeyStore = KeyStore.getInstance("JKS");
+			serverKeyStore.load(new FileInputStream("server.public"), "public".toCharArray());
+
+			// preberi datoteko s svojim certifikatom in tajnim ključem
+			KeyStore clientKeyStore = KeyStore.getInstance("JKS");
+			clientKeyStore.load(new FileInputStream("client.private"), passphrase.toCharArray());
+
+			// vzpostavi SSL kontekst (komu zaupamo, kakšni so moji tajni ključi in certifikati)
+			TrustManagerFactory tmf = TrustManagerFactory.getInstance("SunX509");
+			tmf.init(serverKeyStore);
+			KeyManagerFactory kmf = KeyManagerFactory.getInstance("SunX509");
+			kmf.init(clientKeyStore, passphrase.toCharArray());
+			SSLContext sslContext = SSLContext.getInstance("TLS");
+			sslContext.init(kmf.getKeyManagers(), tmf.getTrustManagers(), (new SecureRandom()));
 			System.out.println("[system] connecting to chat server ...");
-			socket = new Socket("localhost", serverPort); // create socket connection
+			// kreiramo socket
+			SSLSocketFactory sf = sslContext.getSocketFactory();
+			socket = (SSLSocket) sf.createSocket("localhost", serverPort);
+			socket.setEnabledCipherSuites(new String[] { "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256" }); // dovoljeni nacin kriptiranja (CipherSuite)
+			socket.startHandshake(); // eksplicitno sprozi SSL Handshake
+			
+			// connect to the chat server
 			in = new DataInputStream(socket.getInputStream()); // create input stream for listening for incoming messages
 			out = new DataOutputStream(socket.getOutputStream()); // create output stream for sending messages
 			System.out.println("[system] connected");

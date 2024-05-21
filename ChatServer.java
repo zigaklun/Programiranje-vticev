@@ -14,10 +14,41 @@ public class ChatServer {
 	}
 
 	public ChatServer() {
-		ServerSocket serverSocket = null;
+		SSLServerSocket ss = null;
+		String username = null;
+
 		// create socket
 		try {
-			serverSocket = new ServerSocket(this.serverPort); // create the ServerSocket
+			String passphrase = "serverpwd";
+			
+			// preberi datoteko z odjemalskimi certifikati
+			KeyStore clientKeyStore = KeyStore.getInstance("JKS"); // KeyStore za shranjevanje odjemalčevih javnih ključev (certifikatov)
+			clientKeyStore.load(new FileInputStream("clients.public"), "public".toCharArray());
+
+			// preberi datoteko s svojim certifikatom in tajnim ključem
+			KeyStore serverKeyStore = KeyStore.getInstance("JKS"); // KeyStore za shranjevanje strežnikovega tajnega in javnega ključa
+			serverKeyStore.load(new FileInputStream("server.private"), passphrase.toCharArray());
+
+			// vzpostavi SSL kontekst (komu zaupamo, kakšni so moji tajni ključi in certifikati)
+			TrustManagerFactory tmf = TrustManagerFactory.getInstance("SunX509");
+			tmf.init(clientKeyStore);
+			KeyManagerFactory kmf = KeyManagerFactory.getInstance("SunX509");
+			kmf.init(serverKeyStore, passphrase.toCharArray());
+			SSLContext sslContext = SSLContext.getInstance("TLS");
+			sslContext.init(kmf.getKeyManagers(), tmf.getTrustManagers(), (new SecureRandom()));
+
+			// kreiramo socket
+			SSLServerSocketFactory factory = sslContext.getServerSocketFactory();
+			ss = (SSLServerSocket) factory.createServerSocket(this.serverPort);
+			ss.setNeedClientAuth(true); // tudi odjemalec se MORA predstaviti s certifikatom
+			ss.setEnabledCipherSuites(new String[] {"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"});
+
+
+			Socket socket = ss.accept(); // vzpostavljena povezava
+			((SSLSocket)socket).startHandshake(); // eksplicitno sprozi SSL Handshake
+			username = ((SSLSocket) socket).getSession().getPeerPrincipal().getName();
+			System.out.println("Established SSL connection with: " + username);
+
 		} catch (Exception e) {
 			System.err.println("[system] could not create socket on port " + this.serverPort);
 			e.printStackTrace(System.err);
@@ -28,8 +59,8 @@ public class ChatServer {
 		System.out.println("[system] listening ...");
 		try {
 			while (true) {
-				Socket newClientSocket = serverSocket.accept(); // wait for a new client connection
-				String newClientName = null;
+				Socket newClientSocket = ss.accept(); // wait for a new client connection
+				String newClientName = username;
 				synchronized (this) {
 					clients.put(newClientSocket, newClientName); // add client to the list of clients
 				}
@@ -46,7 +77,7 @@ public class ChatServer {
 		// close socket
 		System.out.println("[system] closing server socket ...");
 		try {
-			serverSocket.close();
+			ss.close();
 		} catch (IOException e) {
 			e.printStackTrace(System.err);
 			System.exit(1);
