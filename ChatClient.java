@@ -74,11 +74,12 @@ public class ChatClient extends Thread {
 		// read from STDIN and send messages to the chat server
 		System.out.println("After each message select message mode (P- private, O-public) ");
 		String line = std_in.readLine();
-		nastaviMode(line);
-
+		if(line!= null){
+			nastaviMode(line);
+		}
 		String reciever = null;
 		if (mode.equals("P")) {
-			System.out.print("Ime uporabnika:");
+			System.out.print("Ime uporabnika (z CN='imeuporabnika'):");
 			reciever = std_in.readLine();
 		}
 		String userInput;
@@ -104,7 +105,9 @@ public class ChatClient extends Thread {
 				this.sendMessage(segment, out); // send the message to the chat server
 			}
 			line = std_in.readLine();
-			nastaviMode(line);
+			if(line!= null){
+				nastaviMode(line);
+			}
 			if (mode.equals("P")) {
 				System.out.print("Ime uporabnika:");
 				reciever = std_in.readLine();
@@ -129,10 +132,6 @@ public class ChatClient extends Thread {
 		}
 	}
 
-	public String posljiIme() {
-		// System.out.println(this.nameOfUser);
-		return this.nameOfUser;
-	}
 }
 
 // wait for messages from the chat server and print the out
@@ -147,7 +146,7 @@ class ChatClientMessageReceiver extends Thread {
 		try {
 			String message;
 			while ((message = this.in.readUTF()) != null) { // read new message
-				System.out.println(message);
+				//System.out.println(message);
 				try {
 					if (message.substring(0, 1).equals("U")) {
 
@@ -164,7 +163,7 @@ class ChatClientMessageReceiver extends Thread {
 							String dolzPrej = message.substring(19 + Integer.parseInt(dolzinaPos), 20 + Integer.parseInt(dolzinaPos));						
 							sporocilo = message.substring(21 + Integer.parseInt(dolzinaPos) + Integer.parseInt(dolzPrej));
 						} else {
-							sporocilo = message.substring(18 + Integer.parseInt(dolzinaPos));
+							sporocilo = message.substring(19 + Integer.parseInt(dolzinaPos));
 						}
 						System.out.println("[RKchat " + datum + " ] " + posiljatelj + " said: " + sporocilo);
 						// System.out.println("Can't decript:" + message);

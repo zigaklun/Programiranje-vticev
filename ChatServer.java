@@ -15,12 +15,11 @@ public class ChatServer {
 
 	public ChatServer() {
 		SSLServerSocket ss = null;
-		String username = null;
 
 		// create socket
 		try {
 			String passphrase = "serverpwd";
-			
+			System.out.println("Server se zaganja ...");
 			// preberi datoteko z odjemalskimi certifikati
 			KeyStore clientKeyStore = KeyStore.getInstance("JKS"); // KeyStore za shranjevanje odjemalčevih javnih ključev (certifikatov)
 			clientKeyStore.load(new FileInputStream("client.public"), "public".toCharArray());
@@ -44,10 +43,7 @@ public class ChatServer {
 			ss.setEnabledCipherSuites(new String[] {"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"});
 
 
-			Socket socket = ss.accept(); // vzpostavljena povezava
-			((SSLSocket)socket).startHandshake(); // eksplicitno sprozi SSL Handshake
-			username = ((SSLSocket) socket).getSession().getPeerPrincipal().getName();
-			System.out.println("Established SSL connection with: " + username);
+			
 
 		} catch (Exception e) {
 			System.err.println("[system] could not create socket on port " + this.serverPort);
@@ -59,12 +55,18 @@ public class ChatServer {
 		System.out.println("[system] listening ...");
 		try {
 			while (true) {
-				Socket newClientSocket = ss.accept(); // wait for a new client connection
-				String newClientName = username;
+
+				Socket socket = ss.accept(); // vzpostavljena povezava
+				((SSLSocket)socket).startHandshake(); // eksplicitno sprozi SSL Handshake
+				String username = ((SSLSocket) socket).getSession().getPeerPrincipal().getName();
+				username = username.toUpperCase();
+				System.out.println("Established SSL connection with: " + username);
+
+
 				synchronized (this) {
-					clients.put(newClientSocket, newClientName); // add client to the list of clients
+					clients.put(socket, username); // add client to the list of clients
 				}
-				ChatServerConnector conn = new ChatServerConnector(this, newClientSocket, newClientName); // create a new thread for communication with the new client
+				ChatServerConnector conn = new ChatServerConnector(this, socket, username); // create a new thread for communication with the new client
 				conn.start(); // run the new thread
 
 			}
@@ -103,46 +105,23 @@ public class ChatServer {
 	}
 
 	public void sendToOneClient (String message) throws Exception {
-		String dolzinaPos = message.substring(1, 2);
-		String posiljatelj = message.substring(2, 2 + Integer.parseInt(dolzinaPos));
-		String dolzPrej = message.substring(19 + Integer.parseInt(dolzinaPos), 20 + Integer.parseInt(dolzinaPos));
-		String prejemnik = message.substring(21 + Integer.parseInt(dolzinaPos),21 + Integer.parseInt(dolzinaPos)+ Integer.parseInt(dolzPrej));
-		int stevec = 0;
-		for(Map.Entry<Socket, String> entry : clients.entrySet()){
-			Socket s = entry.getKey();
-			String n = entry.getValue();
-			if(n.equals(prejemnik)){
-				stevec++;
-				try {
-					DataOutputStream out = new DataOutputStream(s.getOutputStream()); // create output stream for sending messages to the client
-					out.writeUTF(message);
-				}catch(Exception e){
-					System.err.println("[system] could not send message to a client");
-					e.printStackTrace(System.err);
-				}
-			}
-		}
-		if(stevec == 0){
+		try{
+			String dolzinaPos = message.substring(1, 2);
+			String posiljatelj = message.substring(2, 2 + Integer.parseInt(dolzinaPos));
+			String dolzPrej = message.substring(19 + Integer.parseInt(dolzinaPos), 20 + Integer.parseInt(dolzinaPos));
+			String prejemnik = message.substring(21 + Integer.parseInt(dolzinaPos),21 + Integer.parseInt(dolzinaPos)+ Integer.parseInt(dolzPrej));
+			int stevec = 0;
+
+			//System.out.println( prejemnik + " <-"+ posiljatelj+ " ---"+ message);                  
+
 			for(Map.Entry<Socket, String> entry : clients.entrySet()){
 				Socket s = entry.getKey();
 				String n = entry.getValue();
-				if(n.equals(posiljatelj)){
-					try {
-						DataOutputStream out = new DataOutputStream(s.getOutputStream()); // create output stream for sending messages to the client
-						out.writeUTF("Username not found");
-					}catch(Exception e){
-						System.err.println("[system] could not send message to a client");
-						e.printStackTrace(System.err);
-					}
-					break;
-				}
-			}
-		}
-		else {
-			for(Map.Entry<Socket, String> entry : clients.entrySet()){
-				Socket s = entry.getKey();
-				String n = entry.getValue();
-				if(n.equals(posiljatelj)){
+				//System.out.println(n + n.length() + " == " + prejemnik + prejemnik.length()); 
+				
+				if(n.equals(prejemnik) || n.equals(posiljatelj)){
+					//System.out.println(n);
+					stevec++;
 					try {
 						DataOutputStream out = new DataOutputStream(s.getOutputStream()); // create output stream for sending messages to the client
 						out.writeUTF(message);
@@ -150,9 +129,27 @@ public class ChatServer {
 						System.err.println("[system] could not send message to a client");
 						e.printStackTrace(System.err);
 					}
-					break;
 				}
 			}
+			if(stevec == 0){
+				for(Map.Entry<Socket, String> entry : clients.entrySet()){
+					Socket s = entry.getKey();
+					String n = entry.getValue();
+					if(n.equals(posiljatelj)){
+						//System.out.println("Posiljatelj" + message);
+						try {
+							DataOutputStream out = new DataOutputStream(s.getOutputStream()); // create output stream for sending messages to the client
+							out.writeUTF("Username not found");
+						}catch(Exception e){
+							System.err.println("[system] could not send message to a client");
+							e.printStackTrace(System.err);
+						}
+						break;
+					}
+				}
+			}
+		}catch(Exception e){
+			System.out.println("Neki je narobe pri posiljanju P sporcil");
 		}
 	}
 
@@ -201,9 +198,13 @@ class ChatServerConnector extends Thread {
 			char prva_crka = msg_received.charAt(0);
 			try {
 				if (prva_crka == 'U') {
-					
-					System.out.println("[ " + this.name + "- " + this.socket.getPort() + " ]: " + msg_received);
-
+					msg_received = "User "+ this.name + " connected to the chat.";
+					//System.out.println(this.name);
+					System.out.println("[ " + this.name + " - " + this.socket.getPort() + " ]: " + msg_received);
+				}
+				else{
+					msg_received = msg_received.substring(0, 1) + this.name.length() + this.name + msg_received.substring(1);
+					//System.out.println(msg_received);
 				}
 
 			} catch (Exception e) {
@@ -214,10 +215,11 @@ class ChatServerConnector extends Thread {
 				if (msg_received.length() == 0) // invalid message
 					continue;
 				if(prva_crka == 'O'){
-					System.out.println("[ " + this.name + "- " + this.socket.getPort() + " ]: "+ msg_received.substring(18+this.name.length()));
+					System.out.println("[ " + this.name + " - " + this.socket.getPort() + " ]: "+ msg_received.substring(19 + this.name.length()));
+
 				} else if(prva_crka == 'P'){
 					String dolPos = msg_received.substring(19+this.name.length(),20 + this.name.length());
-					System.out.println("[ " + this.name + "- " + this.socket.getPort() + " ]: " + msg_received.substring(21 + this.name.length() + Integer.parseInt(dolPos) ));
+					System.out.println("[ " + this.name + " - " + this.socket.getPort() + " ]: " + msg_received.substring(21 + this.name.length() + Integer.parseInt(dolPos) ));
 				}
 			}
 			catch(Exception e){
@@ -228,12 +230,13 @@ class ChatServerConnector extends Thread {
 
 			try {
 				if(prva_crka == 'P'){
-					this.server.sendToOneClient(msg_send);
+					this.server.sendToOneClient(msg_send); //send message to one client
 				}
-				else 
-				this.server.sendToAllClients(msg_send); // send message to all clients
+				else{ 
+					this.server.sendToAllClients(msg_send); // send message to all clients
+				}
 			} catch (Exception e) {
-				System.err.println("[system] there was a problem while sending the message to all clients");
+				System.err.println("[system] there was a problem while sending the message to one/all client/s");
 				e.printStackTrace(System.err);
 				continue;
 			}
